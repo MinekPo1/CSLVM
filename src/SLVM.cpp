@@ -144,12 +144,51 @@ struct SLVM_state{
 			case I_unknown:
 				printf("Unknown instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
 				break;
-
 			default:
-				printf("Unimplemented instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
-				printf("You can help by contributing to the project on GitHub!\n");
-				printf("www.github.com/MinekPo1/CSLVM/contribute\n");
+				if (instructions[instruction_pointer] > Instructions::last_impl) {
+					printf("Unimplemented instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
+					printf("You can help by contributing to the project on GitHub!\n");
+					printf("www.github.com/MinekPo1/CSLVM/contribute\n");
+					break;
+				}
+				Instructions::func[instructions[instruction_pointer]](this, code);
 				break;
+
 		}
+		instruction_pointer++;
+	}
+
+	int get_var(std::string name) {
+		if (lookup_table.find(name) == lookup_table.end()) {
+			// create new variable
+			int addr = allocate_memory(1);
+			lookup_table[name] = addr;
+		}
+		return lookup_table[name];
 	}
 };
+
+namespace Instructions {
+	Instruction last_impl = I_ldi;
+	void fI_unknown(SLVM_state * state, std::string code[]) {
+		// this will never be called
+	}
+
+	void fI_ldi(SLVM_state * state, std::string code[]) {
+		state->accumulator.set_string(code[state->instruction_pointer + 1]);
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+
+	void fI_loadAtVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator = state->memory[addr];
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+
+	// thank you https://stackoverflow.com/a/5488718/12469275
+	void (*func[])(SLVM_state *state, std::string *code) = {
+		fI_unknown,
+		fI_ldi,
+		fI_loadAtVar,
+	};
+}

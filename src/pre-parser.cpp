@@ -1,5 +1,7 @@
+#include <string>
 
-// using an enum allows the usage of a switch statement
+
+// using an enum allows the usage of a jump table
 enum Instruction {
 	I_unknown,
 	I_ldi,
@@ -104,4 +106,127 @@ enum Instruction {
 	I_stackSmallerThan,
 	I_stackLargerThan,
 	I_conditionalValueSet,
+	I_MAX // used to determine the number of instructions. must be last.
 };
+
+std::string instruction_strings[] = {
+	"unknown",
+	"ldi",
+	"loadAtVar",
+	"storeAtVar",
+	"jts",
+	"ret",
+	"addWithVar",
+	"subWithVar",
+	"mulWithVar",
+	"divWithVar",
+	"bitwiseLsfWithVar",
+	"bitwiseRsfWithVar",
+	"bitwiseAndWithVar",
+	"bitwiseOrWithVar",
+	"modWithVar",
+	"print",
+	"println",
+	"jmp",
+	"jt",
+	"jf",
+	"boolAndWithVar",
+	"boolOrWithVar",
+	"boolEqualWithVar",
+	"largerThanOrEqualWithVar",
+	"smallerThanOrEqualWithVar",
+	"boolNotEqualWithVar",
+	"smallerThanWithVar",
+	"largerThanWithVar",
+	"putPixel",
+	"putLine",
+	"putRect",
+	"setColor",
+	"clg",
+	"done",
+	"malloc",
+	"round",
+	"floor",
+	"ceil",
+	"cos",
+	"sin",
+	"sqrt",
+	"atan2",
+	"mouseDown",
+	"mouseX",
+	"mouseY",
+	"sleep",
+	"drawText",
+	"loadAtVarWithOffset",
+	"storeAtVarWithOffset",
+	"isKeyPressed",
+	"createColor",
+	"charAt",
+	"sizeOf",
+	"contains",
+	"join",
+	"setStrokeWidth",
+	"inc",
+	"dec",
+	"graphicsFlip",
+	"newLine",
+	"ask",
+	"setCloudVar",
+	"getCloudVar",
+	"indexOfChar",
+	"goto",
+	"imalloc",
+	"getValueAtPointer",
+	"setValueAtPointer",
+	"runtimeMillis",
+	"free",
+	"getVarAddress",
+	"setVarAddress",
+	"copyVar",
+	"incA",
+	"decA",
+	"arrayBoundsCheck",
+	"getValueAtPointerOfA",
+	"stackPushA",
+	"stackPopA",
+	"stackPush",
+	"stackPop",
+	"stackPeekA",
+	"stackPeek",
+	"stackInc",
+	"stackDec",
+	"stackAdd",
+	"stackSub",
+	"stackMul",
+	"stackDiv",
+	"stackBitwiseLsf",
+	"stackBitwiseRsf",
+	"stackBitwiseAnd",
+	"stackBitwiseOr",
+	"stackMod",
+	"stackBoolAnd",
+	"stackBoolOr",
+	"stackBoolEqual",
+	"stackLargerThanOrEqual",
+	"stackSmallerThanOrEqual",
+	"stackNotEqual",
+	"stackSmallerThan",
+	"stackLargerThan",
+	"conditionalValueSet",
+};
+
+
+template <const int N>
+Instruction * parse(std::string code[N]){
+	Instruction * instructions = new Instruction[N];
+	for (int i = 0; i < N; i++) {
+		// find instruction in instruction_strings
+		for (int j = 0; j < I_MAX; j++) {
+			if (code[i] == instruction_strings[j]) {
+				instructions[i] = (Instruction)j; // I didn't know this is valid C++
+				break;
+			}
+		}
+	}
+	return instructions;
+}
