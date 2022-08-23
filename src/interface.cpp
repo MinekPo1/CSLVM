@@ -2,6 +2,11 @@
 #include <map>
 #include <stdio.h>
 #include <cstring>
+#include <fstream>
+#include <vector>
+
+#include "pre-parser.cpp"
+#include "SLVM.cpp"
 
 struct Options{
 	std::string input = "out.slvm.txt";
@@ -72,17 +77,34 @@ Options parse_arguments(int argc, char * argv[]){
 int main(int argc, char * argv[]){
 	Options options = parse_arguments(argc, argv);
 	// open file
-	FILE *file = fopen(options.input.c_str(), "r");
-	if (file == NULL) {
+	std::ifstream file(options.input.c_str());
+	if (!file) {
 		printf("Could not open file: %s\n", options.input.c_str());
 		return 1;
 	}
 	// read file
-	char *line = NULL;
+	std::string line;
 	size_t len = 0;
-	ssize_t read;
-	while ((read = getline(&line, &len, file)) != -1) {
-		printf("%s", line);
+	std::vector<std::string> lines;
+	while (std::getline(file, line)) {
+		lines.push_back(line);
 	}
+	// close file
+	file.close();
+	// convert to an array
+	std::string lines_array[lines.size()];
+	for (int i = 0; i < lines.size(); i++) {
+		lines_array[i] = lines[i];
+	}
+	// parse
+	Instruction *instructions = parse(lines_array, lines.size());
+
+	// execute
+	SLVM_state state;
+
+	while (state.running and state.instruction_pointer < lines.size()) {
+		state.process(lines_array, instructions);
+	}
+
 	return 0;
 }

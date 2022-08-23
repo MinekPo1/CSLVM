@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 
 
@@ -216,8 +217,7 @@ std::string instruction_strings[] = {
 };
 
 
-template <const int N>
-Instruction * parse(std::string code[N]){
+Instruction * parse(std::string *code, int N){
 	Instruction * instructions = new Instruction[N];
 	for (int i = 0; i < N; i++) {
 		// find instruction in instruction_strings
@@ -225,6 +225,9 @@ Instruction * parse(std::string code[N]){
 			if (code[i] == instruction_strings[j]) {
 				instructions[i] = (Instruction)j; // I didn't know this is valid C++
 				break;
+			}
+			if (j == I_MAX - 1) {
+				instructions[i] = I_unknown;
 			}
 		}
 	}

@@ -56,10 +56,13 @@ struct SLVM_state{
 	                 std::stack<int>  call_stack;
 	      std::map<std::string, int>  lookup_table;
 	std::vector<std::pair<int, int>>  free_chunks; // <start, length>
+	                            bool  running;
 
 	SLVM_state() {
 		memory = new MemoryCell[MEMORY_SIZE];
+		free_chunks.push_back(std::make_pair(0, MEMORY_SIZE));
 		instruction_pointer = 0;
+		running = true;
 	}
 
 	~SLVM_state() {
@@ -83,6 +86,9 @@ struct SLVM_state{
 			}
 			it++;
 		}
+		printf("Error: out of memory\n");
+		running = false;
+		return 0;
 	}
 
 	void deallocate_memory(int addr, int size) {
@@ -139,24 +145,7 @@ struct SLVM_state{
 		}
 	}
 
-	void process(std::string code[], Instruction instructions[]){
-		switch (instructions[instruction_pointer]) {
-			case I_unknown:
-				printf("Unknown instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
-				break;
-			default:
-				if (instructions[instruction_pointer] > Instructions::last_impl) {
-					printf("Unimplemented instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
-					printf("You can help by contributing to the project on GitHub!\n");
-					printf("www.github.com/MinekPo1/CSLVM/contribute\n");
-					break;
-				}
-				Instructions::func[instructions[instruction_pointer]](this, code);
-				break;
-
-		}
-		instruction_pointer++;
-	}
+	void process(std::string code[], Instruction instructions[]);
 
 	int get_var(std::string name) {
 		if (lookup_table.find(name) == lookup_table.end()) {
@@ -169,20 +158,86 @@ struct SLVM_state{
 };
 
 namespace Instructions {
-	Instruction last_impl = I_ldi;
+	Instruction last_impl = I_println;
 	void fI_unknown(SLVM_state * state, std::string code[]) {
 		// this will never be called
 	}
-
 	void fI_ldi(SLVM_state * state, std::string code[]) {
 		state->accumulator.set_string(code[state->instruction_pointer + 1]);
 		state->instruction_pointer ++; // it will be incremented by the caller a second time
 	}
-
 	void fI_loadAtVar(SLVM_state * state, std::string code[]) {
 		int addr = state->get_var(code[state->instruction_pointer + 1]);
 		state->accumulator = state->memory[addr];
 		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_storeAtVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->memory[addr] = state->accumulator;
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_jts(SLVM_state * state, std::string code[]) {
+		// jump to stack
+		int addr = atoi(code[state->instruction_pointer + 1].c_str());
+		state->call_stack.push(state->instruction_pointer);
+		state->instruction_pointer = addr;
+		state->instruction_pointer ++;
+	}
+	void fI_ret(SLVM_state * state, std::string code[]) {
+		// return from stack
+		state->instruction_pointer = state->call_stack.top();
+		state->call_stack.pop();
+	}
+	void fI_addWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(state->accumulator.get_float() + state->memory[addr].get_float());
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_subWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(state->accumulator.get_float() - state->memory[addr].get_float());
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_mulWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(state->accumulator.get_float() * state->memory[addr].get_float());
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_divWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(state->accumulator.get_float() / state->memory[addr].get_float());
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_bitwiseLsfWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(int(state->accumulator.get_float()) << int(state->memory[addr].get_float()));
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_bitwiseRsfWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(int(state->accumulator.get_float()) >> int(state->memory[addr].get_float()));
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_bitwiseAndWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(int(state->accumulator.get_float()) & int(state->memory[addr].get_float()));
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_bitwiseOrWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(int(state->accumulator.get_float()) | int(state->memory[addr].get_float()));
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_modWithVar(SLVM_state * state, std::string code[]) {
+		int addr = state->get_var(code[state->instruction_pointer + 1]);
+		state->accumulator.set_float(int(state->accumulator.get_float()) % int(state->memory[addr].get_float()));
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_print(SLVM_state * state, std::string code[]) {
+		printf("%s",state->accumulator.get_string().c_str());
+	}
+	void fI_println(SLVM_state * state, std::string code[]) {
+		printf("%s\n",state->accumulator.get_string().c_str());
 	}
 
 	// thank you https://stackoverflow.com/a/5488718/12469275
@@ -190,5 +245,40 @@ namespace Instructions {
 		fI_unknown,
 		fI_ldi,
 		fI_loadAtVar,
+		fI_storeAtVar,
+		fI_jts,
+		fI_ret,
+		fI_addWithVar,
+		fI_subWithVar,
+		fI_mulWithVar,
+		fI_divWithVar,
+		fI_bitwiseLsfWithVar,
+		fI_bitwiseRsfWithVar,
+		fI_bitwiseAndWithVar,
+		fI_bitwiseOrWithVar,
+		fI_modWithVar,
+		fI_print,
+		fI_println,
 	};
 }
+
+void SLVM_state::process(std::string code[], Instruction instructions[]) {
+		switch (instructions[instruction_pointer]) {
+			case I_unknown:
+				printf("Unknown instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
+				running = false;
+				break;
+			default:
+				if (instructions[instruction_pointer] > Instructions::last_impl) {
+					printf("Unimplemented instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
+					printf("You can help by contributing to the project on GitHub!\n");
+					printf("www.github.com/MinekPo1/CSLVM/contribute\n");
+					running = false;
+					break;
+				}
+				Instructions::func[instructions[instruction_pointer]](this, code);
+				break;
+
+		}
+		instruction_pointer++;
+	}
