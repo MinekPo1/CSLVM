@@ -96,15 +96,17 @@ int main(int argc, char * argv[]){
 	for (int i = 0; i < lines.size(); i++) {
 		lines_array[i] = lines[i];
 	}
-	// parse
-	Instruction *instructions = parse(lines_array, lines.size());
+
+	InstructionStorage store(lines_array,lines.size());
 
 	// execute
 	SLVM_state state;
-
-	while (state.running and state.instruction_pointer < lines.size()) {
-		state.process(lines_array, instructions);
+	while (state.running)
+	{
+		printf("[%s @ %d]\n",store.values[state.instruction_pointer].c_str(),state.instruction_pointer + 1);
+		state.process(store);
 	}
+
 
 	return 0;
 }

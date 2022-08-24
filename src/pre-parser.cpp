@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <map>
 
 
 // using an enum allows the usage of a jump table
@@ -110,126 +111,134 @@ enum Instruction {
 	I_MAX // used to determine the number of instructions. must be last.
 };
 
-std::string instruction_strings[] = {
-	"unknown",
-	"ldi",
-	"loadAtVar",
-	"storeAtVar",
-	"jts",
-	"ret",
-	"addWithVar",
-	"subWithVar",
-	"mulWithVar",
-	"divWithVar",
-	"bitwiseLsfWithVar",
-	"bitwiseRsfWithVar",
-	"bitwiseAndWithVar",
-	"bitwiseOrWithVar",
-	"modWithVar",
-	"print",
-	"println",
-	"jmp",
-	"jt",
-	"jf",
-	"boolAndWithVar",
-	"boolOrWithVar",
-	"boolEqualWithVar",
-	"largerThanOrEqualWithVar",
-	"smallerThanOrEqualWithVar",
-	"boolNotEqualWithVar",
-	"smallerThanWithVar",
-	"largerThanWithVar",
-	"putPixel",
-	"putLine",
-	"putRect",
-	"setColor",
-	"clg",
-	"done",
-	"malloc",
-	"round",
-	"floor",
-	"ceil",
-	"cos",
-	"sin",
-	"sqrt",
-	"atan2",
-	"mouseDown",
-	"mouseX",
-	"mouseY",
-	"sleep",
-	"drawText",
-	"loadAtVarWithOffset",
-	"storeAtVarWithOffset",
-	"isKeyPressed",
-	"createColor",
-	"charAt",
-	"sizeOf",
-	"contains",
-	"join",
-	"setStrokeWidth",
-	"inc",
-	"dec",
-	"graphicsFlip",
-	"newLine",
-	"ask",
-	"setCloudVar",
-	"getCloudVar",
-	"indexOfChar",
-	"goto",
-	"imalloc",
-	"getValueAtPointer",
-	"setValueAtPointer",
-	"runtimeMillis",
-	"free",
-	"getVarAddress",
-	"setVarAddress",
-	"copyVar",
-	"incA",
-	"decA",
-	"arrayBoundsCheck",
-	"getValueAtPointerOfA",
-	"stackPushA",
-	"stackPopA",
-	"stackPush",
-	"stackPop",
-	"stackPeekA",
-	"stackPeek",
-	"stackInc",
-	"stackDec",
-	"stackAdd",
-	"stackSub",
-	"stackMul",
-	"stackDiv",
-	"stackBitwiseLsf",
-	"stackBitwiseRsf",
-	"stackBitwiseAnd",
-	"stackBitwiseOr",
-	"stackMod",
-	"stackBoolAnd",
-	"stackBoolOr",
-	"stackBoolEqual",
-	"stackLargerThanOrEqual",
-	"stackSmallerThanOrEqual",
-	"stackNotEqual",
-	"stackSmallerThan",
-	"stackLargerThan",
-	"conditionalValueSet",
+std::map<std::string,Instruction> instruction_map = {
+	{"ldi",I_ldi},
+	{"loadAtVar",I_loadAtVar},
+	{"storeAtVar",I_storeAtVar},
+	{"jts",I_jts},
+	{"ret",I_ret},
+	{"addWithVar",I_addWithVar},
+	{"subWithVar",I_subWithVar},
+	{"mulWithVar",I_mulWithVar},
+	{"divWithVar",I_divWithVar},
+	{"bitwiseLsfWithVar",I_bitwiseLsfWithVar},
+	{"bitwiseRsfWithVar",I_bitwiseRsfWithVar},
+	{"bitwiseAndWithVar",I_bitwiseAndWithVar},
+	{"bitwiseOrWithVar",I_bitwiseOrWithVar},
+	{"modWithVar",I_modWithVar},
+	{"print",I_print},
+	{"println",I_println},
+	{"jmp",I_jmp},
+	{"jt",I_jt},
+	{"jf",I_jf},
+	{"boolAndWithVar",I_boolAndWithVar},
+	{"boolOrWithVar",I_boolOrWithVar},
+	{"boolEqualWithVar",I_boolEqualWithVar},
+	{"largerThanOrEqualWithVar",I_largerThanOrEqualWithVar},
+	{"smallerThanOrEqualWithVar",I_smallerThanOrEqualWithVar},
+	{"boolNotEqualWithVar",I_boolNotEqualWithVar},
+	{"smallerThanWithVar",I_smallerThanWithVar},
+	{"largerThanWithVar",I_largerThanWithVar},
+	{"putPixel",I_putPixel},
+	{"putLine",I_putLine},
+	{"putRect",I_putRect},
+	{"setColor",I_setColor},
+	{"clg",I_clg},
+	{"done",I_done},
+	{"malloc",I_malloc},
+	{"round",I_round},
+	{"floor",I_floor},
+	{"ceil",I_ceil},
+	{"cos",I_cos},
+	{"sin",I_sin},
+	{"sqrt",I_sqrt},
+	{"atan2",I_atan2},
+	{"mouseDown",I_mouseDown},
+	{"mouseX",I_mouseX},
+	{"mouseY",I_mouseY},
+	{"sleep",I_sleep},
+	{"drawText",I_drawText},
+	{"loadAtVarWithOffset",I_loadAtVarWithOffset},
+	{"storeAtVarWithOffset",I_storeAtVarWithOffset},
+	{"isKeyPressed",I_isKeyPressed},
+	{"createColor",I_createColor},
+	{"charAt",I_charAt},
+	{"sizeOf",I_sizeOf},
+	{"contains",I_contains},
+	{"join",I_join},
+	{"setStrokeWidth",I_setStrokeWidth},
+	{"inc",I_inc},
+	{"dec",I_dec},
+	{"graphicsFlip",I_graphicsFlip},
+	{"newLine",I_newLine},
+	{"ask",I_ask},
+	{"setCloudVar",I_setCloudVar},
+	{"getCloudVar",I_getCloudVar},
+	{"indexOfChar",I_indexOfChar},
+	{"goto",I_goto},
+	{"imalloc",I_imalloc},
+	{"getValueAtPointer",I_getValueAtPointer},
+	{"setValueAtPointer",I_setValueAtPointer},
+	{"runtimeMillis",I_runtimeMillis},
+	{"free",I_free},
+	{"getVarAddress",I_getVarAddress},
+	{"setVarAddress",I_setVarAddress},
+	{"copyVar",I_copyVar},
+	{"incA",I_incA},
+	{"decA",I_decA},
+	{"arrayBoundsCheck",I_arrayBoundsCheck},
+	{"getValueAtPointerOfA",I_getValueAtPointerOfA},
+	{"stackPushA",I_stackPushA},
+	{"stackPopA",I_stackPopA},
+	{"stackPush",I_stackPush},
+	{"stackPop",I_stackPop},
+	{"stackPeekA",I_stackPeekA},
+	{"stackPeek",I_stackPeek},
+	{"stackInc",I_stackInc},
+	{"stackDec",I_stackDec},
+	{"stackAdd",I_stackAdd},
+	{"stackSub",I_stackSub},
+	{"stackMul",I_stackMul},
+	{"stackDiv",I_stackDiv},
+	{"stackBitwiseLsf",I_stackBitwiseLsf},
+	{"stackBitwiseRsf",I_stackBitwiseRsf},
+	{"stackBitwiseAnd",I_stackBitwiseAnd},
+	{"stackBitwiseOr",I_stackBitwiseOr},
+	{"stackMod",I_stackMod},
+	{"stackBoolAnd",I_stackBoolAnd},
+	{"stackBoolOr",I_stackBoolOr},
+	{"stackBoolEqual",I_stackBoolEqual},
+	{"stackLargerThanOrEqual",I_stackLargerThanOrEqual},
+	{"stackSmallerThanOrEqual",I_stackSmallerThanOrEqual},
+	{"stackNotEqual",I_stackNotEqual},
+	{"stackSmallerThan",I_stackSmallerThan},
+	{"stackLargerThan",I_stackLargerThan},
+	{"conditionalValueSet",I_conditionalValueSet},
 };
 
 
-Instruction * parse(std::string *code, int N){
-	Instruction * instructions = new Instruction[N];
-	for (int i = 0; i < N; i++) {
-		// find instruction in instruction_strings
-		for (int j = 0; j < I_MAX; j++) {
-			if (code[i] == instruction_strings[j]) {
-				instructions[i] = (Instruction)j; // I didn't know this is valid C++
-				break;
-			}
-			if (j == I_MAX - 1) {
-				instructions[i] = I_unknown;
-			}
+struct InstructionStorage {
+	Instruction * i_codes;
+	std::string * values;
+	size_t size;
+
+	InstructionStorage(std::string *i_values, size_t i_size){
+		i_codes = new Instruction[i_size];
+		values = new std::string[i_size];
+		size = i_size;
+		for (size_t i = 0; i < size; i++) {
+			values[i] = i_values[i];
+			i_codes[i] = I_unknown;
 		}
 	}
-	return instructions;
-}
+
+	size_t get_size(){
+		return size;
+	}
+
+	Instruction get_at(size_t i){
+		if(i_codes[i])
+			return i_codes[i];
+		return i_codes[i] = instruction_map[values[i]];
+	}
+};

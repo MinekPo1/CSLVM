@@ -6,10 +6,19 @@
 #include <vector>
 #include "pre-parser.cpp"
 #include <queue>
+#include <math.h>
+#include <chrono>
+#include <thread>
 
 // this allows an easy hop to data types with more capacity
 #define num_t float
 #define addr_t int
+
+// shortcut to get variable in front of the program pointer
+#define get_var_with_offset(n) state->get_var(code[state->instruction_pointer + n])
+// shortcuts to get value at address
+#define m_get_num(addr) state->memory[addr].get_num()
+#define m_get_str(addr) state->memory[addr].get_string()
 
 addr_t MEMORY_SIZE = 0x10000;
 
@@ -18,10 +27,10 @@ struct MemoryCell {
 		num_t n;
 		std::string * s;
 	} value;
-	bool is_num_t;
+	bool is_num;
 
 	num_t get_num() {
-		if (is_num_t)
+		if (is_num)
 			return value.n;
 		// convert string to num_t
 		// note: we can loose some accuracy
@@ -30,28 +39,28 @@ struct MemoryCell {
 	}
 
 	std::string get_string() {
-		if (is_num_t)
+		if (is_num)
 			return std::to_string(value.n);
 		return *value.s;
 	}
 
 	void set_num(num_t n) {
 		value.n = n;
-		is_num_t = true;
+		is_num = true;
 	}
 
 	void set_string(std::string s) {
 		value.s = new std::string(s);
-		is_num_t = false;
+		is_num = false;
 	}
 
 	MemoryCell() {
-		is_num_t = true;
+		is_num = true;
 		value.n = 0;
 	}
 
 	~MemoryCell() {
-		if (!is_num_t)
+		if (!is_num)
 			delete value.s;
 	}
 };
@@ -62,7 +71,7 @@ enum GraphicInstructions{
 	GI_P_REC,
 	GI_P_TXT,
 	GI_GOTO,
-	GI_SET_CL
+	GI_S_CL
 };
 
 struct GraphicInstruction {
@@ -195,7 +204,7 @@ struct SLVM_state{
 		}
 	}
 
-	void process(std::string code[], Instruction instructions[]);
+	void process(InstructionStorage store);
 
 	addr_t get_var(std::string name) {
 		if (lookup_table.find(name) == lookup_table.end()) {
@@ -208,32 +217,30 @@ struct SLVM_state{
 };
 
 namespace Instructions {
-	Instruction last_impl = I_putRect;
+	Instruction last_impl = I_mouseY;
 	// why are the function arguments r padded?
 	// because no one stopped me.
-	void fI_unknown                   (SLVM_state * state, std::string code[]) {
-		// this will never be called
-	}
 	void fI_ldi                       (SLVM_state * state, std::string code[]) {
 		state->accumulator.set_string(code[state->instruction_pointer + 1]);
 		state->instruction_pointer ++; // it will be incremented by the caller a second time
 	}
 	void fI_loadAtVar                 (SLVM_state * state, std::string code[]) {
 		addr_t addr = state->get_var(code[state->instruction_pointer + 1]);
-		state->accumulator = state->memory[addr];
+		state->accumulator.value = state->memory[addr].value;
+		state->accumulator.is_num = state->memory[addr].is_num;
 		state->instruction_pointer ++; // it will be incremented by the caller a second time
 	}
 	void fI_storeAtVar                (SLVM_state * state, std::string code[]) {
 		addr_t addr = state->get_var(code[state->instruction_pointer + 1]);
-		state->memory[addr] = state->accumulator;
+		state->memory[addr].value = state->accumulator.value;
+		state->memory[addr].is_num = state->accumulator.is_num;
 		state->instruction_pointer ++; // it will be incremented by the caller a second time
 	}
 	void fI_jts                       (SLVM_state * state, std::string code[]) {
 		// jump to stack
 		addr_t addr = atoi(code[state->instruction_pointer + 1].c_str());
-		state->call_stack.push(state->instruction_pointer);
-		state->instruction_pointer = addr;
-		state->instruction_pointer ++;
+		state->call_stack.push(state->instruction_pointer + 1);
+		state->instruction_pointer = addr - 1;
 	}
 	void fI_ret                       (SLVM_state * state, std::string code[]) {
 		// return from stack
@@ -293,22 +300,25 @@ namespace Instructions {
 	}
 	void fI_jmp                       (SLVM_state * state, std::string code[]) {
 		addr_t addr = atoi(code[state->instruction_pointer + 1].c_str());
-		state->instruction_pointer = addr;
-		state->instruction_pointer++;
+		state->instruction_pointer = addr - 1;
 	}
 	void fI_jt                        (SLVM_state * state, std::string code[]) {
 		addr_t addr = atoi(code[state->instruction_pointer + 1].c_str());
-		if (state->accumulator.get_num()){
-			state->instruction_pointer = addr;
+		if (state->accumulator.get_num() > 0){
+			printf("yas queen\n");
+			state->instruction_pointer = addr - 1;
 		}
-		state->instruction_pointer++;
+		else
+			state->instruction_pointer++;
 	}
-	void fI_jt                        (SLVM_state * state, std::string code[]) {
+	void fI_jf                        (SLVM_state * state, std::string code[]) {
 		addr_t addr = atoi(code[state->instruction_pointer + 1].c_str());
-		if (!state->accumulator.get_num()){
-			state->instruction_pointer = addr;
+		if (state->accumulator.get_num() < 1){
+			printf("hahahaha\n");
+			state->instruction_pointer = addr - 1;
 		}
-		state->instruction_pointer++;
+		else
+			state->instruction_pointer++;
 	}
 	void fI_boolAndWithVar            (SLVM_state * state, std::string code[]) {
 		addr_t addr = state->get_var(code[state->instruction_pointer + 1]);
@@ -394,10 +404,189 @@ namespace Instructions {
 
 		state->instruction_pointer += 2;
 	}
+	void fI_setColor                  (SLVM_state * state, std::string code[]) {
+		addr_t c = get_var_with_offset(1);
+		GraphicInstruction gi;
+		gi.instruction = GI_S_CL;
+		gi.data.D_GI_S_CL.cl = state->memory[c].get_num();
+		state->graphic_queue.push(gi);
+		state->instruction_pointer ++;
+	}
+	void fI_clg                       (SLVM_state * state, std::string code[]) {
+		while (!state->graphic_queue.empty())
+			state->graphic_queue.pop();
+	}
+	void fI_done                      (SLVM_state * state, std::string code[]) {
+		state->running = false;
+	}
+	void fI_malloc                    (SLVM_state * state, std::string code[]) {
+		addr_t size = get_var_with_offset(1);
+
+		state->accumulator.set_num(
+			state->allocate_memory(state->memory[size].get_num())
+		);
+	}
+	void fI_round                     (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+		addr_t places = get_var_with_offset(2);
+
+		num_t pow10 = pow(10,state->memory[places].get_num());
+
+		state->accumulator.set_num(
+			round(m_get_num(val) * pow10) / pow10
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	void fI_floor                     (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+		addr_t places = get_var_with_offset(2);
+
+		num_t pow10 = pow(10,state->memory[places].get_num());
+
+		state->accumulator.set_num(
+			floor(m_get_num(val) * pow10) / pow10
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	void fI_ceil                      (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+		addr_t places = get_var_with_offset(2);
+
+		num_t pow10 = pow(10,state->memory[places].get_num());
+
+		state->accumulator.set_num(
+			ceil(m_get_num(val) * pow10) / pow10
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	void fI_sin                       (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+
+		state->accumulator.set_num(
+			sin(m_get_num(val))
+		);
+		state->instruction_pointer ++;
+	}
+	void fI_cos                       (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+
+		state->accumulator.set_num(
+			sin(m_get_num(val))
+		);
+		state->instruction_pointer ++;
+	}
+	void fI_sqrt                      (SLVM_state * state, std::string code[]) {
+		addr_t val = get_var_with_offset(1);
+
+		state->accumulator.set_num(
+			sqrt(m_get_num(val))
+		);
+		state->instruction_pointer ++;
+	}
+	void fI_atan2                     (SLVM_state * state, std::string code[]) {
+		addr_t a = get_var_with_offset(1);
+		addr_t b = get_var_with_offset(2);
+
+		state->accumulator.set_num(
+			atan2(m_get_num(a),m_get_num(b))
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	// TODO: fI_mouseDown, fI_mouseX, fI_mouseY
+	void fI_sleep                     (SLVM_state * state, std::string code[]) {
+		addr_t time = get_var_with_offset(1);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(m_get_num(time)));
+
+		state->instruction_pointer ++;
+	}
+	void fI_drawText                  (SLVM_state * state, std::string code[]) {
+		addr_t text = get_var_with_offset(1);
+
+		GraphicInstruction gi;
+
+		gi.instruction = GI_P_TXT;
+		gi.data.D_GI_P_TXT.text = new std::string(m_get_str(text));
+
+		state->graphic_queue(gi);
+	}
+	void fI_loadAtVarWithOffset       (SLVM_state * state, std::string code[]) {
+		addr_t addr = state->get_var(code[state->instruction_pointer + 1]);
+		addr_t offset = get_var_with_offset(2);
+		addr += m_get_num(offset);
+		state->accumulator.value = state->memory[addr].value;
+		state->accumulator.is_num = state->memory[addr].is_num;
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	void fI_storeAtVarWithOffset      (SLVM_state * state, std::string code[]) {
+		addr_t addr = state->get_var(code[state->instruction_pointer + 1]);
+		addr_t offset = get_var_with_offset(2);
+		addr += m_get_num(offset);
+		state->memory[addr].value = state->accumulator.value;
+		state->memory[addr].is_num = state->accumulator.is_num;
+		state->instruction_pointer ++; // it will be incremented by the caller a second time
+	}
+	// TODO: fI_isKeyPressed
+	void fI_createColor               (SLVM_state * state, std::string code[]) {
+		addr_t r = get_var_with_offset(1);
+		addr_t g = get_var_with_offset(2);
+		addr_t b = get_var_with_offset(3);
+		// do ***math***
+		state->accumulator.set_num(
+			int(m_get_num(r)) << 16 +
+			int(m_get_num(g)) << 8  +
+			int(m_get_num(b))
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	void fI_charAt                    (SLVM_state * state, std::string code[]) {
+		addr_t text = get_var_with_offset(1);
+		addr_t index = get_var_with_offset(2);
+
+		state->accumulator.set_string(
+			{m_get_str(text)[m_get_num(index)]}
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+	void fI_sizeOf                    (SLVM_state * state, std::string code[]) {
+		addr_t text = get_var_with_offset(1);
+
+		state->accumulator.set_num(
+			m_get_str(text).length()
+		);
+		state->instruction_pointer ++;
+	}
+	void fI_contains                  (SLVM_state * state, std::string code[]) {
+		addr_t text = get_var_with_offset(1);
+		addr_t sub_text = get_var_with_offset(2);
+
+		state->accumulator.set_num(
+			m_get_str(text).find(sub_text)
+		);
+		state->instruction_pointer ++;
+		state->instruction_pointer ++;
+	}
+
+	void fI_TODO                      (SLVM_state * state, std::string code[]) {
+		printf(
+			"Unimplemented instruction %s @ %i\n",
+			code[state->instruction_pointer].c_str(),
+			state->instruction_pointer + 1
+		);
+		printf("You can help by contributing!\n");
+		state->running = false;
+	}
 
 	// thank you https://stackoverflow.com/a/5488718/12469275
 	void (*func[])(SLVM_state *state, std::string *code) = {
-		fI_unknown,
+		NULL,
 		fI_ldi,
 		fI_loadAtVar,
 		fI_storeAtVar,
@@ -416,7 +605,7 @@ namespace Instructions {
 		fI_println,
 		fI_jmp,
 		fI_jt,
-		fI_jt,
+		fI_jf,
 		fI_boolAndWithVar,
 		fI_boolOrWithVar,
 		fI_boolEqualWithVar,
@@ -427,27 +616,50 @@ namespace Instructions {
 		fI_largerThanWithVar,
 		fI_putPixel,
 		fI_putLine,
-		fI_putRect
+		fI_putRect,
+		fI_setColor,
+		fI_clg,
+		fI_done,
+		fI_malloc,
+		fI_round,
+		fI_floor,
+		fI_ceil,
+		fI_sin,
+		fI_cos,
+		fI_sqrt,
+		fI_atan2,
+		fI_TODO, // I_mouseDown
+		fI_TODO, // I_mouseX
+		fI_TODO, // I_mouseY
 	};
 }
 
-void SLVM_state::process(std::string code[], Instruction instructions[]) {
-		switch (instructions[instruction_pointer]) {
-			case I_unknown:
-				printf("Unknown instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
-				running = false;
-				break;
-			default:
-				if (instructions[instruction_pointer] > Instructions::last_impl) {
-					printf("Unimplemented instruction at %d (`%s`)\n", instruction_pointer, code[instruction_pointer].c_str());
-					printf("You can help by contributing to the project on GitHub!\n");
-					printf("www.github.com/MinekPo1/CSLVM/contribute\n");
-					running = false;
-					break;
-				}
-				Instructions::func[instructions[instruction_pointer]](this, code);
-				break;
-
+void SLVM_state::process(InstructionStorage store) {
+		if (instruction_pointer >= store.size){
+			this->running = false;
+			return;
 		}
+		Instruction i = store.get_at(this->instruction_pointer);
+		if (!i){
+			printf(
+				"Unknown instruction %s @ %i\n",
+				store.values[this->instruction_pointer].c_str(),
+				this->instruction_pointer + 1
+			);
+			this->running = false;
+			return;
+		}
+		if (i > Instructions::last_impl){
+			printf(
+				"Unimplemented instruction %s @ %i (#%d)\n",
+				store.values[this->instruction_pointer].c_str(),
+				this->instruction_pointer + 1,
+				i
+			);
+			printf("You can help by contributing!\n");
+			this->running = false;
+			return;
+		}
+		Instructions::func[i](this,store.values);
 		instruction_pointer++;
 	}
